@@ -93,7 +93,7 @@ class GO_Sync_User
 	{
 		$user_ids = $this->get_cronned_users();
 
-		if ( ! is_array( $user_ids ) )
+		if ( ! is_array( $user_ids ) || empty ( $user_ids ) )
 		{
 			return;
 		}
