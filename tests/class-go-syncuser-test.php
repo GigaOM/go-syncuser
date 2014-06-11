@@ -24,22 +24,7 @@ class GO_Sync_User_Test extends GO_Sync_User_Test_Abstract
 	{
 		// set up our own config data so we know what to expect
 		remove_filter( 'go_config', array( go_config(), 'go_config_filter' ), 10, 2 );
-		add_filter( 'go_config', function( $config, $which )
-					{
-						if ( 'go-syncuser' == $which )
-						{
-							$config = array(
-								'triggers' => array(
-									'wp_login' => array(
-										'user_var'    => 1,
-										'user_token'  => 'object',
-										'now'         => FALSE,
-									),
-								),
-							);
-						}//END if
-						return $config;
-					}, 'go-syncuser', 10, 2 );
+		add_filter( 'go_config', array( $this, 'go_config_filter' ), 10, 2 );
 
 		$this->assertFalse( has_action( 'wp_login' ) );
 
@@ -61,4 +46,25 @@ class GO_Sync_User_Test extends GO_Sync_User_Test_Abstract
 		$this->assertTrue( isset( $wp_filter['wp_login'] ) );
 		$this->assertGreaterThan( 0, count( $wp_filter['wp_login'] ) );
 	}//END test_config
+
+	/**
+	 * return custom config data for our tests
+	 */
+	public function go_config_filter( $config, $which )
+	{
+		if ( 'go-syncuser' == $which )
+		{
+			$config = array(
+				'triggers' => array(
+					'wp_login' => array(
+						'user_var'    => 1,
+						'user_token'  => 'object',
+						'now'         => FALSE,
+					),
+				),
+			);
+		}//END if
+
+		return $config;
+	}//END go_config_filter
 }// END class

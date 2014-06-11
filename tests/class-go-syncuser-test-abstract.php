@@ -12,6 +12,12 @@ abstract class GO_Sync_User_Test_Abstract extends WP_UnitTestCase
 	{
 		parent::setUp();
 		$this->clear_caches();
+
+		// because the go_syncuser singleton caches its config, we need
+		// to destroy it before each test to make sure each test gets
+		// a fresh config object
+		global $go_syncuser;
+		$go_syncuser = NULL;
 	}//END setUp
 
 	/**
