@@ -5,8 +5,13 @@
 class GO_Sync_User
 {
 	public $slug = 'go-syncuser';
-	public $action_hooks = array();     // action hook names and params
-	public $did_action_hooks = array(); // track which actions we have called
+
+	// user meta keys
+	public $umkey_cronned = 'go_syncuser_cronned';
+
+	private $action_hooks = array();     // action hook names and params
+	private $did_action_hooks = array(); // track which actions we have called
+	private $suspend_triggers = FALSE;
 
 	/**
 	 * constructor
@@ -14,6 +19,17 @@ class GO_Sync_User
 	public function __construct()
 	{
 		add_action( 'init', array( $this, 'init' ) );
+
+		// cron callbacks
+		add_filter( 'cron_schedules', array( $this, 'cron_schedules' ) );
+		add_action( 'go_syncuser_cron', array( $this, 'sync_users_cron' ) );
+
+		// install when the plugin is activated
+		register_activation_hook( dirname( __DIR__ ) . '/go-syncuser.php', array( $this, 'cron_register' ) );
+
+		// and uninstall when the plugin is deactivated
+		register_deactivation_hook( dirname( __DIR__ ) . '/go-syncuser.php', array( $this, 'cron_deregister' ) );
+
 	}//END __construct
 
 	/**
@@ -30,7 +46,145 @@ class GO_Sync_User
 				call_user_func_array( array( $this, 'add_action_trigger_handler' ), $parameters );
 			}//END foreach
 		}//END if
+
+		if ( is_admin() )
+		{
+			add_action( 'admin_init', array( $this, 'admin_init' ) );
+		}
 	}//END init
+
+	/**
+	 * init hooks in admin mode
+	 */
+	public function admin_init()
+	{
+		// Ajax handlers
+		add_action( 'wp_ajax_go_syncuser_user_update_sync', array( $this, 'user_update_sync_ajax' ) );
+	}//END admin_init
+
+	/**
+	 * Set up a custom cron interval based on the 'cron_interval_in_secs'
+	 * config file setting.
+	 *
+	 * @param array $cron_times current cron time intervals
+	 * @return array the input with the new cron time interval added
+	 */
+	public function cron_schedules( $cron_times )
+	{
+		if ( ! ( $period = $this->config( 'cron_interval_in_secs' ) ) )
+		{
+			return $cron_times;
+		}
+
+		$cron_times[ 'go_syncuser_interval' ] = array(
+			'interval' => intval( $period ),
+			'display' => 'Plugin Configured: Every ' . $period . ' seconds.',
+		);
+
+		return $cron_times;
+	}//END cron_schedules
+
+	/**
+	 * we get a list of users that need to be sync'ed and call our
+	 * action on each user, with the corresponding 'add', 'update', or
+	 * 'delete' action.
+	 */
+	public function sync_users_cron()
+	{
+		$user_ids = $this->get_cronned_users();
+
+		if ( ! is_array( $user_ids ) )
+		{
+			return;
+		}
+
+		// debugging info when run/tested on the command line
+		if ( 'cli' == php_sapi_name() )
+		{
+			echo 'Running actions on ' . count( $user_ids ) ." users\n";
+		}
+
+		// turn off triggers while running
+		$this->suspend_triggers = TRUE;
+
+		foreach ( $user_ids as $user_id )
+		{
+			// we only cron user updates, not deletes
+			do_action( 'go_syncuser_user', $user_id, 'update' );
+
+			// delete the user meta we use to identify users to sync
+			delete_user_meta( $user_id, $this->umkey_cronned );
+
+			if ( 'cli' == php_sapi_name() )
+			{
+				echo "Update user $user_id\n";
+			}
+		}//END foreach
+
+		// turn triggers back on
+		go_mcsync()->suspend_triggers = FALSE;
+	}//END sync_users_cron
+
+	/**
+	 * activate our cron hook when the plugin is activated
+	 */
+	public function cron_register()
+	{
+		if ( ! wp_next_scheduled( 'go_syncuser_cron' ) )
+		{
+			wp_schedule_event( time(), 'go_syncuser_interval', 'go_syncuser_cron' );
+		}
+	}//END cron_register
+
+	/**
+	 * clear out our cron hook when the plugin is deactivated
+	 */
+	public function cron_deregister()
+	{
+		wp_clear_scheduled_hook( 'go_syncuser_cron' );
+	}//END cron_deregister
+
+	/**
+	 * Ajax callback to sync a user immediately. The user id is passed in
+	 * via a query var 'go_syncuser_user_id'. We always invoke the 
+	 * user sync action with the action type 'update' when sync'ed by
+	 * this ajax function.
+	 */
+	public function user_update_sync_ajax()
+	{
+		// only allowed for people who can edit users
+		if ( ! current_user_can( 'edit_users' ) )
+		{
+			die;
+		}
+
+		if ( ! ( $user = $this->sanitize_user( wp_filter_nohtml_kses( $_REQUEST[ 'go_syncuser_user_id' ] ) ) ) )
+		{
+			echo '<p class="error">Missing user id</p>';
+			die;
+		}
+
+		do_action( 'go_syncuser_user', $user->ID, 'update' );
+
+		die;
+	}//END user_update_sync_ajax
+
+	/**
+	 * retrieve the cronned users from the database
+	 *
+	 * @return array An array of users to run do our go_syncuser_user action on
+	 */
+	public function get_cronned_users()
+	{
+		return get_users( array(
+			'meta_key' => $this->umkey_cronned,
+			'meta_value' => '1',
+			'orderby' => 'ID',
+			'order' => 'DESC',
+			'number' => '23',
+			'fields' => 'ID',
+		) );
+	}//END get_cronned_users
 
 	/**
 	 * Singleton for our configuration
@@ -145,11 +299,72 @@ class GO_Sync_User
 			}
 		}// END if
 
-		do_action( 'go_syncuser_user', $user->ID, $options, $args );
+		// call the action now or batch it up for later? we cannot sync
+		// a deleted user asynchronously later, so we must sync those users
+		// now regardless of the value of $options->now
+		if ( $options->now || 'delete' == $options->action )
+		{
+			do_action( 'go_syncuser_user', $user->ID, $options->action );
+		}
+		else
+		{
+			$this->queue_user_update( $user );
+		}
 
 		// in case this was called on a filter, return the first argument
 		return $args[0];
 	}//END action_trigger_handler
+
+	/**
+	 * save a user to be sync'ed by wp cron later
+	 *
+	 * @param object $user The user to be saved
+	 */
+	public function queue_user_update( $user )
+	{
+		$user = $this->sanitize_user( $user );
+
+		// make sure we found a user
+		if ( empty( $user ) || is_wp_error( $user ) )
+		{
+			apply_filters( 'go_slog', 'go-syncuser', __FUNCTION__ . ': No user found for input value, got ' . var_export( $user, TRUE ), '' );
+			return FALSE;
+		}//END if
+
+		// turn off triggers while running
+		$this->suspend_triggers = TRUE;
+
+		update_user_meta( $user->ID, $this->umkey_cronned, 1 );
+
+		// turn triggers back on
+		$this->suspend_triggers = FALSE;
+	}//END queue_user_update
+
+	/**
+	 * Turn a user ID, email address, or object into a proper user object
+	 */
+	public function sanitize_user( $user_input )
+	{
+		if ( is_object( $user_input ) )
+		{
+			if ( isset( $user_input->ID ) )
+			{
+				return get_userdata( (int) $user_input->ID );
+			}
+
+			return FALSE;
+		}//END if
+		elseif ( is_numeric( $user_input ) )
+		{
+			return get_userdata( (int) $user_input );
+		}
+		elseif ( is_string( $user_input ) )
+		{
+			return get_user_by( 'email', $user_input );
+		}
+
+		return FALSE;
+	}//END sanitize_user
 }//END class
 
 /**
