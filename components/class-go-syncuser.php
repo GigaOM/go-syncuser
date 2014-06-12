@@ -13,6 +13,59 @@ class GO_Sync_User
 	private $did_action_hooks = array(); // track which actions we have called
 	private $suspend_triggers = FALSE;
 
+	private $default_config = array(
+		'cron_interval_in_secs' => 701,
+		'batch_size' => 31,
+		'is_cli' => FALSE,
+		'triggers' => array(
+			// the keys are the WP actions we want to hook to
+			'user_register' => array(
+				// this indexes the user or user id in the hook's callback
+				// args list
+				'user_var'    => 0,
+
+				// call the syncuser action now, or batch it until later?
+				'now'         => FALSE,
+
+				// what type of action caused this trigger to fire? one of
+				// 'add', 'update' or 'delete' (user). note that all user meta
+				// operations (add, update, delete) are considered to be
+				// updates to a user account or profile.
+				'action'   => 'add',
+			),
+			'wp_login' => array(
+				'user_var'    => 1,
+				'now'         => FALSE,
+				'action'      => 'update',
+			),
+			'profile_update' => array(
+				'user_var'    => 0,
+				'now'         => FALSE,
+				'action'      => 'update',
+			),
+			'delete_user' => array(
+				'user_var'    => 0,
+				'now'         => TRUE,
+				'action'      => 'delete',
+			),
+			'added_user_meta' => array(
+				'user_var'    => 1,
+				'now'         => FALSE,
+				'action'      => 'update',
+			),
+			'updated_user_meta' => array(
+				'user_var'    => 1,
+				'now'         => FALSE,
+				'action'      => 'update',
+			),
+			'deleted_user_meta' => array(
+				'user_var'    => 1,
+				'now'         => FALSE,
+				'action'      => 'update',
+			),
+		),
+	);
+
 	/**
 	 * constructor
 	 */
@@ -99,7 +152,7 @@ class GO_Sync_User
 		}
 
 		// debugging info when run/tested on the command line
-		if ( 'cli' == php_sapi_name() )
+		if ( $this->config( 'is_cli' ) )
 		{
 			echo 'Running actions on ' . count( $user_ids ) ." users\n";
 		}
@@ -115,9 +168,9 @@ class GO_Sync_User
 			// delete the user meta we use to identify users to sync
 			delete_user_meta( $user_id, $this->user_meta_key_cronned );
 
-			if ( 'cli' == php_sapi_name() )
+			if ( $this->config( 'is_cli' ) )
 			{
-				echo "Update user $user_id\n";
+				echo "called 'go_syncuser_user' hooks on user $user_id\n";
 			}
 		}//END foreach
 
@@ -181,7 +234,7 @@ class GO_Sync_User
 			'meta_value' => '1',
 			'orderby' => 'ID',
 			'order' => 'DESC',
-			'number' => '23',
+			'number' => $this->config( 'batch_size' ),
 			'fields' => 'ID',
 		) );
 	}//END get_cronned_users
@@ -201,7 +254,7 @@ class GO_Sync_User
 		{
 			$this->config = apply_filters(
 				'go_config',
-				NULL,
+				$this->default_config,
 				$this->slug
 			);
 		}//END if
@@ -216,7 +269,8 @@ class GO_Sync_User
 
 	/**
 	 * Register named action/filter hooks to trigger synchronization of a user
-	 * Triggers are defined in the config file. See usage example in $this->default_triggers
+	 * Triggers are defined in the config file. See usage example in
+	 * $this->default_config['triggers']
 	 *
 	 * @param string $hook_name name of the hook to trigger off of
 	 * @param int $user_var index to the user parameter in the hook's callback arguments list
