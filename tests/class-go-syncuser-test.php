@@ -58,7 +58,6 @@ class GO_Sync_User_Test extends GO_Sync_User_Test_Abstract
 				'triggers' => array(
 					'wp_login' => array(
 						'user_var'    => 1,
-						'user_token'  => 'object',
 						'now'         => FALSE,
 					),
 				),

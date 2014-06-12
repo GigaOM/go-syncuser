@@ -18,25 +18,6 @@ class GO_Sync_User_Map_Test extends GO_Sync_User_Test_Abstract
 	}//END test_singleton
 
 	/**
-	 * test the config file mapping functions
-	 */
-	public function test_map()
-	{
-		// set up our own config data so we know what to expect
-		remove_filter( 'go_config', array( go_config(), 'go_config_filter' ), 10, 2 );
-		add_filter( 'go_config', array( $this, 'go_config_filter' ), 'go-syncuser', 10, 2 );
-
-		$users = $this->create_users();
-
-		// test all the private mapping functions
-		$this->assertEquals( 'contributor', go_syncuser_map()->map( $users[0], 'role' ) );
-		$this->assertEquals( $users[1], go_syncuser_map()->map( $users[1], 'user_id' ) );
-		$this->assertEquals( 'user_0@test.com', go_syncuser_map()->map( $users[0], 'email' ) );
-		$this->assertEquals( 'baconissoyummy!', go_syncuser_map()->map( $users[0], 'meta0' ) );
-		$this->assertEquals( 'Pork Belly Rulz!', go_syncuser_map()->map( $users[1], 'meta1' ) );
-	}//END test_map
-
-	/**
 	 * create a couple of test users
 	 *
 	 * @return array list of test user ids
@@ -57,45 +38,4 @@ class GO_Sync_User_Map_Test extends GO_Sync_User_Test_Abstract
 
 		return $users;
 	}//END create_users
-
-	/**
-	 * return custom config data for our tests
-	 */
-	public function go_config_filter( $config, $which )
-	{
-		if ( 'go-syncuser' == $which )
-		{
-			$config = array(
-				'field_map' => array(
-					'email' => array(
-						'function' => array( go_syncuser_map(), 'user_meta' ),
-						'args' => array(
-							'user_email',
-						),
-					),
-					'meta0' => array(
-						'function' => array( go_syncuser_map(), 'user_meta' ),
-						'args' => array(
-							'meta0',
-						),
-					),
-					'meta1' => array(
-						'function' => array( go_syncuser_map(), 'user_meta_subkey' ),
-						'args' => array(
-							'meta1',
-							'name',
-						),
-					),
-					'role' => array(
-						'function' => array( go_syncuser_map(), 'get_role' ),
-					),
-					'user_id' => array(
-						'function' => array( go_syncuser_map(), 'get_user_id' ),
-					),
-				),
-			);
-		}//END if
-
-		return $config;
-	}//END go_config_filter
 }// END class

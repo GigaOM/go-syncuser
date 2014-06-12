@@ -7,7 +7,7 @@ class GO_Sync_User
 	public $slug = 'go-syncuser';
 
 	// user meta keys
-	public $umkey_cronned = 'go_syncuser_cronned';
+	public $user_meta_key_cronned = 'go_syncuser_cronned';
 
 	private $action_hooks = array();     // action hook names and params
 	private $did_action_hooks = array(); // track which actions we have called
@@ -113,7 +113,7 @@ class GO_Sync_User
 			do_action( 'go_syncuser_user', $user_id, 'update' );
 
 			// delete the user meta we use to identify users to sync
-			delete_user_meta( $user_id, $this->umkey_cronned );
+			delete_user_meta( $user_id, $this->user_meta_key_cronned );
 
 			if ( 'cli' == php_sapi_name() )
 			{
@@ -177,7 +177,7 @@ class GO_Sync_User
 	public function get_cronned_users()
 	{
 		return get_users( array(
-			'meta_key' => $this->umkey_cronned,
+			'meta_key' => $this->user_meta_key_cronned,
 			'meta_value' => '1',
 			'orderby' => 'ID',
 			'order' => 'DESC',
@@ -220,17 +220,15 @@ class GO_Sync_User
 	 *
 	 * @param string $hook_name name of the hook to trigger off of
 	 * @param int $user_var index to the user parameter in the hook's callback arguments list
-	 * @param string $user_token how is the user tokenized? 'id', 'object', 'email', 'username', etc.
 	 * @param boolean $now call the action hook now or queue it up for cron
 	 * @param $action string what type of action trigger this sync? one of
 	 *  'add', 'update' or 'delete'
 	 */
-	public function add_action_trigger_handler( $hook_name, $user_var, $user_token = 'id', $now = FALSE, $action = 'update' )
+	public function add_action_trigger_handler( $hook_name, $user_var, $now = FALSE, $action = 'update' )
 	{
 		// register the hook internally
 		$this->action_hooks[ $hook_name ] = (object) array(
 			'user_var'   => $user_var,
-			'user_token' => $user_token,
 			'now'        => $now,
 			'action'     => $action,
 		);
@@ -286,18 +284,7 @@ class GO_Sync_User
 		$user = $args[ $options->user_var ];
 
 		// check if that var is a user object or if we need to load one
-		if ( ! $user instanceof WP_User )
-		{
-			// Support objects that contain user_id
-			if ( is_object( $user ) && isset ( $user->user_id ) )
-			{
-				$user = get_user_by( 'id', $user->user_id );
-			}
-			else
-			{
-				$user = get_user_by( $options->user_token, $user );
-			}
-		}// END if
+		$user = $this->sanitize_user( $user );
 
 		// call the action now or batch it up for later? we cannot sync
 		// a deleted user asynchronously later, so we must sync those users
@@ -334,7 +321,7 @@ class GO_Sync_User
 		// turn off triggers while running
 		$this->suspend_triggers = TRUE;
 
-		update_user_meta( $user->ID, $this->umkey_cronned, 1 );
+		update_user_meta( $user->ID, $this->user_meta_key_cronned, 1 );
 
 		// turn triggers back on
 		$this->suspend_triggers = FALSE;
