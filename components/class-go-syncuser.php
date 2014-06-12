@@ -4,10 +4,10 @@
  */
 class GO_Sync_User
 {
-	public $slug = 'go-syncuser';
+	private $slug = 'go-syncuser';
 
 	// user meta keys
-	public $user_meta_key_cronned = 'go_syncuser_cronned';
+	private $user_meta_key_cronned = 'go_syncuser_cronned';
 
 	private $action_hooks = array();     // action hook names and params
 	private $did_action_hooks = array(); // track which actions we have called
@@ -76,7 +76,7 @@ class GO_Sync_User
 			return $cron_times;
 		}
 
-		$cron_times[ 'go_syncuser_interval' ] = array(
+		$cron_times['go_syncuser_interval'] = array(
 			'interval' => intval( $period ),
 			'display' => 'Plugin Configured: Every ' . $period . ' seconds.',
 		);
@@ -122,7 +122,7 @@ class GO_Sync_User
 		}//END foreach
 
 		// turn triggers back on
-		go_mcsync()->suspend_triggers = FALSE;
+		$this->suspend_triggers = FALSE;
 	}//END sync_users_cron
 
 	/**
