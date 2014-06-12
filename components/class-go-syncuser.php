@@ -16,7 +16,6 @@ class GO_Sync_User
 	private $default_config = array(
 		'cron_interval_in_secs' => 701,
 		'batch_size' => 31,
-		'is_cli' => FALSE,
 		'triggers' => array(
 			// the keys are the WP actions we want to hook to
 			'user_register' => array(
@@ -152,7 +151,7 @@ class GO_Sync_User
 		}
 
 		// debugging info when run/tested on the command line
-		if ( $this->config( 'is_cli' ) )
+		if ( 'cli' == php_sapi_name() )
 		{
 			echo 'Running actions on ' . count( $user_ids ) ." users\n";
 		}
@@ -168,7 +167,7 @@ class GO_Sync_User
 			// delete the user meta we use to identify users to sync
 			delete_user_meta( $user_id, $this->user_meta_key_cronned );
 
-			if ( $this->config( 'is_cli' ) )
+			if ( 'cli' == php_sapi_name() )
 			{
 				echo "called 'go_syncuser_user' hooks on user $user_id\n";
 			}
