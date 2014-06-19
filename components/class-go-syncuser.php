@@ -337,7 +337,9 @@ class GO_Sync_User
 		// only allow running this hook once per page load. marking it as done
 		$this->did_action_hook[ $hook_name ] = TRUE;
 
-		// suspend triggers so we don't re-hook while executing
+		// suspend triggers so we don't re-hook while executing. this is
+		// not reenabled for the rest of the call chain because we don't
+		// expect more than one call to this handler per page load
 		$this->suspend_triggers = TRUE;
 
 		// get an easy handle on the vars for this hook
