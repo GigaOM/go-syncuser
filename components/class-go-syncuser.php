@@ -91,7 +91,7 @@ class GO_Sync_User
 	 */
 	public function suspend_triggers( $suspend_triggers )
 	{
-		$this->suspend_triggers = $suspend_triggers;
+		$this->suspend_triggers = (bool) $suspend_triggers;
 	}//END suspend_triggers
 
 	/**
