@@ -85,6 +85,16 @@ class GO_Sync_User
 	}//END __construct
 
 	/**
+	 * suspend or unsuspend our triggers
+	 * @param boolean $suspend_triggers suspend triggers if set to TRUE,
+	 *  unsuspend triggers if set to FALSE
+	 */
+	public function suspend_triggers( $suspend_triggers )
+	{
+		$this->suspend_triggers = $suspend_triggers;
+	}//END suspend_triggers
+
+	/**
 	 * called when WP is ready to initialize this plugin
 	 */
 	public function init()
