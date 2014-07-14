@@ -8,6 +8,66 @@
  */
 class GO_Sync_User_Map
 {
+    /**
+     * Call a function mapped to a field specified in $config and return
+     * the result of the function call. The configuration is an array
+     * containing 'function', 'args', and optionally 'type' (of the returned
+     * value). e.g.:
+     *
+     * array(
+     *   'function' => array( go_syncuser_map(), 'user_meta_subkey' ),
+     *   'args' => array(
+     *       'go_user_recurly_subscription',
+     *       'sub_current_period_ends_at',
+     *   ),
+     *   'type' => 'date',
+     * )
+     *
+     * @param $user WP_User User being synchronized
+     * @param $config array Configuration for the map field
+	 */
+	public function map_field( $user, $config )
+	{
+		// build the arguments array
+		$args = array();
+		if ( isset( $config['args'] ) )
+		{
+			$args = is_array( $config['args'] ) ? $config['args'] : array( $config['args'] );
+		}
+
+		array_unshift( $args, $user ); // add $user as the first arg
+
+		$field_value = call_user_func_array( $config['function'], $args );
+
+		// check if we need to convert the return value to a different type
+		if ( isset( $config['type'] ) )
+		{
+			switch ( $config['type'] )
+			{
+				case 'date':
+					// check to see if the field is a unix timestamp
+					// methodology from: http://stackoverflow.com/questions/3377537/checking-if-a-string-contains-an-integer/3377560#3377560
+					if ( (string) (int) $field_value == $field_value )
+					{
+						$utime = $field_value;
+					}
+					else
+					{
+						$utime = strtotime( $field_value );
+					}
+
+					$field_value = ( $utime ) ? date( 'Y-m-d H:i:s', $utime ) : '';
+					break;
+
+				case 'int':
+					$field_value = intval( $field_value );
+					break;
+			}//END switch
+ 		}//END if
+
+		return $field_value;
+	}//END map_field
+
 	/**
 	 * get a WP_User member var or a user meta. if $field is a member var
 	 * of WP_User, then return its value, else treat it as a user meta
