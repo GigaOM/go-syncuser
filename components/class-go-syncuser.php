@@ -166,13 +166,14 @@ class GO_Sync_User
 			echo 'Running actions on ' . count( $user_ids ) ." users\n";
 		}
 
-		// turn off triggers while running
-		$this->suspend_triggers = TRUE;
-
 		foreach ( $user_ids as $user_id )
 		{
 			// we only cron user updates, not deletes
 			do_action( 'go_syncuser_user', $user_id, 'update' );
+
+			// turn off triggers while running. we need to do this inside
+			// this foreach loop
+			$this->suspend_triggers = TRUE;
 
 			// delete the user meta we use to identify users to sync
 			delete_user_meta( $user_id, $this->user_meta_key_cronned );
