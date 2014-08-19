@@ -4,7 +4,11 @@
  */
 class GO_Sync_User
 {
-	private $slug = 'go-syncuser';
+	public $slug = 'go-syncuser';
+	public $version = '1.0';
+
+	private $admin = NULL;
+	private $debug = NULL;
 
 	// user meta keys
 	private $user_meta_key_cronned = 'go_syncuser_cronned';
@@ -82,6 +86,10 @@ class GO_Sync_User
 		// and uninstall when the plugin is deactivated
 		register_deactivation_hook( dirname( __DIR__ ) . '/go-syncuser.php', array( $this, 'cron_deregister' ) );
 
+		if ( is_admin() )
+		{
+			$this->admin();
+		}
 	}//END __construct
 
 	/**
@@ -108,21 +116,21 @@ class GO_Sync_User
 				call_user_func_array( array( $this, 'add_action_trigger_handler' ), $parameters );
 			}//END foreach
 		}//END if
-
-		if ( is_admin() )
-		{
-			add_action( 'admin_init', array( $this, 'admin_init' ) );
-		}
 	}//END init
 
 	/**
-	 * init hooks in admin mode
+	 * @return GO_Sync_User_Admin our admin class instance
 	 */
-	public function admin_init()
+	public function admin()
 	{
-		// Ajax handlers
-		add_action( 'wp_ajax_go_syncuser_user_update_sync', array( $this, 'user_update_sync_ajax' ) );
-	}//END admin_init
+		if ( ! $this->admin )
+		{
+			require_once __DIR__ . '/class-go-syncuser-admin.php';
+			$this->admin = new GO_Sync_User_Admin( $this );
+		}
+
+		return $this->admin;
+	}//END admin
 
 	/**
 	 * Set up a custom cron interval based on the 'cron_interval_in_secs'
@@ -153,10 +161,19 @@ class GO_Sync_User
 	 */
 	public function sync_users_cron()
 	{
+		if ( $this->debug() )
+		{
+			apply_filters( 'go_slog', 'go-syncuser', 'sync_users_cron starting' );
+		}
+
 		$user_ids = $this->get_cronned_users();
 
 		if ( ! is_array( $user_ids ) || empty ( $user_ids ) )
 		{
+			if ( $this->debug() )
+			{
+				apply_filters( 'go_slog', 'go-syncuser', 'no cronned user to process' );
+			}
 			return;
 		}
 
@@ -164,6 +181,10 @@ class GO_Sync_User
 		if ( 'cli' == php_sapi_name() )
 		{
 			echo 'Running actions on ' . count( $user_ids ) ." users\n";
+		}
+		elseif ( $this->debug() )
+		{
+			apply_filters( 'go_slog', 'go-syncuser', 'Running action on ' . count( $user_ids ) . ' users' );
 		}
 
 		foreach ( $user_ids as $user_id )
@@ -182,10 +203,19 @@ class GO_Sync_User
 			{
 				echo "called 'go_syncuser_user' hooks on user $user_id\n";
 			}
+			elseif ( $this->debug() )
+			{
+				apply_filters( 'go_slog', 'go-syncuser', 'called "go_syncuser_user" hook on user ' . $user_id );
+			}
 		}//END foreach
 
 		// turn triggers back on
 		$this->suspend_triggers = FALSE;
+
+		if ( $this->debug() )
+		{
+			apply_filters( 'go_slog', 'go-syncuser', 'sync_users_cron done' );
+		}
 	}//END sync_users_cron
 
 	/**
@@ -206,31 +236,6 @@ class GO_Sync_User
 	{
 		wp_clear_scheduled_hook( 'go_syncuser_cron' );
 	}//END cron_deregister
-
-	/**
-	 * Ajax callback to sync a user immediately. The user id is passed in
-	 * via a query var 'go_syncuser_user_id'. We always invoke the 
-	 * user sync action with the action type 'update' when sync'ed by
-	 * this ajax function.
-	 */
-	public function user_update_sync_ajax()
-	{
-		// only allowed for people who can edit users
-		if ( ! current_user_can( 'edit_users' ) )
-		{
-			die;
-		}
-
-		if ( ! ( $user = $this->sanitize_user( wp_filter_nohtml_kses( $_REQUEST[ 'go_syncuser_user_id' ] ) ) ) )
-		{
-			echo '<p class="error">Missing user id</p>';
-			die;
-		}
-
-		do_action( 'go_syncuser_user', $user->ID, 'update' );
-
-		die;
-	}//END user_update_sync_ajax
 
 	/**
 	 * retrieve the cronned users from the database
@@ -380,7 +385,10 @@ class GO_Sync_User
 		// make sure we found a user
 		if ( empty( $user ) || is_wp_error( $user ) )
 		{
-			apply_filters( 'go_slog', 'go-syncuser', __FUNCTION__ . ': No user found for input value, got ' . var_export( $user, TRUE ), '' );
+			if ( $this->debug() )
+			{
+				apply_filters( 'go_slog', 'go-syncuser', __FUNCTION__ . ': No user found for input value, got ' . var_export( $user, TRUE ), '' );
+			}
 			return FALSE;
 		}//END if
 
@@ -418,6 +426,51 @@ class GO_Sync_User
 
 		return FALSE;
 	}//END sanitize_user
+
+	/**
+	 * @param bool $debug if not NULL we'll set the debug option to this
+	 * @return bool TRUE if debug option is on, FALSE if not
+	 */
+	public function debug( $debug = NULL )
+	{
+		// simple case: return locally cached debug value
+		if ( ! isset( $debug ) && isset( $this->debug ) )
+		{
+			return $this->debug;
+		}
+
+		$save_option = FALSE; // should we save the debu option?
+
+		$options = get_option( $this->slug );
+
+		if ( ! $options || ! is_array( $options ) )
+		{
+			$options = array(
+				'debug' => FALSE,
+			);
+			$save_option = TRUE;
+		}
+		elseif ( ! isset( $options['debug'] ) )
+		{
+			$options['debug'] = FALSE;
+			$save_option = TRUE;
+		}
+
+		if ( isset( $debug ) )
+		{
+			$options['debug'] = $debug;
+			$save_option = TRUE;
+		}
+
+		if ( $save_option )
+		{
+			update_option( $this->slug, $options );
+		}
+
+		$this->debug = $options['debug'];
+
+		return $this->debug;
+	}//END debug
 }//END class
 
 /**
