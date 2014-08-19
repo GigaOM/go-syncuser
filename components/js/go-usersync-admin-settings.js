@@ -2,8 +2,8 @@
 	'use strict';	
 
 	// update the debug option when user clicks on the debug checkbox
-	$('#go-syncuser-debug').click( function( e ) {
-		var debug = ( 'checked' === $('#go-syncuser-debug').attr("checked") );
+	$('#go-syncuser-debug').click( function() {
+		var debug = ( 'checked' === $('#go-syncuser-debug').attr('checked') );
 
 		$.ajax({
 			url: go_usersync_ajax.admin_ajax_url +
