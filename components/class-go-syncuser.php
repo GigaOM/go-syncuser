@@ -428,49 +428,73 @@ class GO_Sync_User
 	}//END sanitize_user
 
 	/**
-	 * @param bool $debug if not NULL we'll set the debug option to this
+	 * set the debug flag, with the option to persist it as a WP option
+	 *
+	 * @param bool $debug the new value of the debug flag
+	 * @param bool $persist (optional) if TRUE we'll save the value of
+	 *  $debug as an option.
+	 */
+	public function set_debug( $debug, $persist = FALSE )
+	{
+		$this->debug = $debug;
+
+		if ( $persist )
+		{
+			$this->set_debug_option( $debug );
+		}
+	}//END set_debug
+
+	/**
+	 * get our debug status
+	 *
 	 * @return bool TRUE if debug option is on, FALSE if not
 	 */
-	public function debug( $debug = NULL )
+	public function debug()
 	{
-		// simple case: return locally cached debug value
-		if ( ! isset( $debug ) && isset( $this->debug ) )
+		// check if we already have the value
+		if ( NULL !== $this->debug )
 		{
 			return $this->debug;
 		}
 
-		$save_option = FALSE; // should we save the debu option?
+		// we don't have it. initialize it
+		$options = get_option( $this->slug );
 
+		if ( ! is_array( $options ) || ! isset( $options['debug'] ) )
+		{
+			$this->debug = FALSE;
+			$this->set_debug_option( $this->debug );
+		}
+		else
+		{
+			$this->debug = $options['debug'];
+		}
+
+		return $this->debug;
+	}//END debug
+
+	/**
+	 * set the "debug" element of our option
+	 *
+	 * @param bool $debug the value of the "debug" option
+	 */
+	private function set_debug_option( $debug )
+	{
 		$options = get_option( $this->slug );
 
 		if ( ! $options || ! is_array( $options ) )
 		{
 			$options = array(
-				'debug' => FALSE,
+				'debug' => $debug,
 			);
-			$save_option = TRUE;
 		}
-		elseif ( ! isset( $options['debug'] ) )
-		{
-			$options['debug'] = FALSE;
-			$save_option = TRUE;
-		}
-
-		if ( isset( $debug ) )
+		else
 		{
 			$options['debug'] = $debug;
-			$save_option = TRUE;
 		}
 
-		if ( $save_option )
-		{
-			update_option( $this->slug, $options );
-		}
-
-		$this->debug = $options['debug'];
-
-		return $this->debug;
-	}//END debug
+		update_option( $this->slug, $options );
+	}//END set_debug_option
 }//END class
 
 /**

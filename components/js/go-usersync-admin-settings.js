@@ -10,10 +10,10 @@
 				'?action=go_syncuser_set_debug' +
 				'&debug=' + debug,
 			success: function(result) {
-				if ( 'ok' !== result ) {
+				if ( ! result.success ) {
 					// if we didn't get a confirmation from the server,
 					// alert the error and revert the debug setting
-					alert( 'unable to save the option: ' + result );
+					alert( 'unable to update the debug option: ' + result.data );
 					$('#go-syncuser-debug').attr('checked', ! debug );
 				}
 			},

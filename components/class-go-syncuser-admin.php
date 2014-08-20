@@ -77,20 +77,23 @@ class GO_Sync_User_Admin
 		require __DIR__ . '/templates/admin-settings.php';
 	}//END admin_settings_page
 
+	/**
+	 * admin ajax callback to save the debug option
+	 */
 	public function set_debug_ajax()
 	{
 		if ( ! current_user_can( 'manage_options' ) )
 		{
-			die;
+			wp_send_json_error();
 		}
 
 		if ( ! isset( $_GET['debug'] ) )
 		{
-			die( 'missing query var' );
+			wp_send_json_error( 'missing query var' );
 		}
 
-		$this->core->debug( 'true' == $_GET['debug'] );
+		$this->core->set_debug( 'true' == $_GET['debug'], TRUE );
 
-		die( 'ok' );
+		wp_send_json_success();
 	}//END set_debug_ajax
 }//END class
