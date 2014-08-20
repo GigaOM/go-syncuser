@@ -8,7 +8,8 @@
 		$.ajax({
 			url: go_usersync_ajax.admin_ajax_url +
 				'?action=go_syncuser_set_debug' +
-				'&debug=' + debug,
+				'&debug=' + debug +
+				'&' + go_usersync_ajax.slug + '-nonce=' + go_usersync_ajax.go_syncuser_nonce,
 			success: function(result) {
 				if ( ! result.success ) {
 					// if we didn't get a confirmation from the server,

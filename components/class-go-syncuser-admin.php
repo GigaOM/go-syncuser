@@ -29,7 +29,12 @@ class GO_Sync_User_Admin
 	public function admin_init()
 	{
 		wp_register_script( 'go-usersync-admin-settings', plugins_url( '', __FILE__ ) . '/js/go-usersync-admin-settings.js', array( 'jquery' ), $this->core->version, TRUE );
-		wp_localize_script( 'go-usersync-admin-settings', 'go_usersync_ajax', array( 'admin_ajax_url' => admin_url( '/admin-ajax.php' ) ) );
+		$what_to_localize = array(
+			'admin_ajax_url' => admin_url( '/admin-ajax.php' ),
+			'go_syncuser_nonce' => wp_create_nonce( $this->core->slug ),
+			'slug' => $this->core->slug,
+		);
+		wp_localize_script( 'go-usersync-admin-settings', 'go_usersync_ajax', $what_to_localize );
 
 		wp_enqueue_script( 'go-usersync-admin-settings' );
 	}//END admin_init
@@ -60,6 +65,11 @@ class GO_Sync_User_Admin
 			wp_send_json_error();
 		}
 
+		if ( ! $this->verify_nonce() )
+		{
+			wp_send_json_error( 'bad nonce!' );
+		}
+
 		if ( ! isset( $_GET['debug'] ) )
 		{
 			wp_send_json_error( 'missing query var' );
@@ -69,4 +79,18 @@ class GO_Sync_User_Admin
 
 		wp_send_json_success();
 	}//END set_debug_ajax
+
+	/**
+	 * verify the nonce
+	 * @return bool TRUE if nonce if verified, FALSE if not
+	 */
+	public function verify_nonce()
+	{
+		if ( ! isset( $_GET[ $this->core->slug . '-nonce' ] ) )
+		{
+			return FALSE;
+		}
+
+		return wp_verify_nonce( $_GET[ $this->core->slug .'-nonce' ], $this->core->slug );
+	}//end verify_nonce
 }//END class
