@@ -28,12 +28,14 @@ class GO_Sync_User_Admin
 	 */
 	public function admin_init()
 	{
-		wp_register_script( 'go-usersync-admin-settings', plugins_url( '', __FILE__ ) . '/js/go-usersync-admin-settings.js', array( 'jquery' ), $this->core->version, TRUE );
+		wp_register_script( 'go-usersync-admin-settings', plugins_url( '/js/go-usersync-admin-settings.js', __FILE__ ), array( 'jquery' ), $this->core->version, TRUE );
+
 		$what_to_localize = array(
 			'admin_ajax_url' => admin_url( '/admin-ajax.php' ),
 			'go_syncuser_nonce' => wp_create_nonce( $this->core->slug ),
 			'slug' => $this->core->slug,
 		);
+
 		wp_localize_script( 'go-usersync-admin-settings', 'go_usersync_ajax', $what_to_localize );
 
 		wp_enqueue_script( 'go-usersync-admin-settings' );
