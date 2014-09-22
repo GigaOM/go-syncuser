@@ -163,7 +163,7 @@ class GO_Sync_User
 	{
 		if ( $this->debug() )
 		{
-			apply_filters( 'go_slog', 'go-syncuser', 'sync_users_cron starting' );
+			do_action( 'go_slog', 'go-syncuser', 'sync_users_cron starting' );
 		}
 
 		$user_ids = $this->get_cronned_users();
@@ -172,7 +172,7 @@ class GO_Sync_User
 		{
 			if ( $this->debug() )
 			{
-				apply_filters( 'go_slog', 'go-syncuser', 'no cronned user to process' );
+				do_action( 'go_slog', 'go-syncuser', 'no cronned user to process' );
 			}
 			return;
 		}
@@ -184,7 +184,7 @@ class GO_Sync_User
 		}
 		elseif ( $this->debug() )
 		{
-			apply_filters( 'go_slog', 'go-syncuser', 'Running action on ' . count( $user_ids ) . ' users' );
+			do_action( 'go_slog', 'go-syncuser', 'Running action on ' . count( $user_ids ) . ' users' );
 		}
 
 		foreach ( $user_ids as $user_id )
@@ -205,7 +205,7 @@ class GO_Sync_User
 			}
 			elseif ( $this->debug() )
 			{
-				apply_filters( 'go_slog', 'go-syncuser', 'called "go_syncuser_user" hook on user ' . $user_id );
+				do_action( 'go_slog', 'go-syncuser', 'called "go_syncuser_user" hook on user ' . $user_id );
 			}
 		}//END foreach
 
@@ -214,7 +214,7 @@ class GO_Sync_User
 
 		if ( $this->debug() )
 		{
-			apply_filters( 'go_slog', 'go-syncuser', 'sync_users_cron done' );
+			do_action( 'go_slog', 'go-syncuser', 'sync_users_cron done' );
 		}
 	}//END sync_users_cron
 
@@ -387,7 +387,7 @@ class GO_Sync_User
 		{
 			if ( $this->debug() )
 			{
-				apply_filters( 'go_slog', 'go-syncuser', __FUNCTION__ . ': No user found for input value, got ' . var_export( $user, TRUE ), '' );
+				do_action( 'go_slog', 'go-syncuser', __FUNCTION__ . ': No user found for input value, got ' . var_export( $user, TRUE ), '' );
 			}
 			return FALSE;
 		}//END if
