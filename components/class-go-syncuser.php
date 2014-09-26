@@ -244,6 +244,16 @@ class GO_Sync_User
 	 */
 	public function get_cronned_users()
 	{
+		// protect against unset or zero batch_size config value, which
+		// actually means "no limit" if passed on to get_users()
+		if (
+			! $this->config( 'batch_size' )
+			|| 0 >= $this->config( 'batch_size' )
+		)
+		{
+			return array();
+		}
+
 		return get_users( array(
 			'meta_key' => $this->user_meta_key_cronned,
 			'meta_value' => '1',
