@@ -28,7 +28,9 @@ class GO_Sync_User_Admin
 	 */
 	public function admin_init()
 	{
-		wp_register_script( 'go-usersync-admin-settings', plugins_url( '/js/go-usersync-admin-settings.js', __FILE__ ), array( 'jquery' ), $this->core->version, TRUE );
+		$js_min = ( defined( 'GO_DEV' ) && GO_DEV ) ? 'lib' : 'min';
+
+		wp_register_script( 'go-usersync-admin-settings', plugins_url( '/js/' . $js_min . '/go-usersync-admin-settings.js', __FILE__ ), array( 'jquery' ), $this->core->version, TRUE );
 
 		$what_to_localize = array(
 			'admin_ajax_url' => admin_url( '/admin-ajax.php' ),
